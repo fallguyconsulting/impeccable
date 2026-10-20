@@ -26,6 +26,9 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const DEFAULT_DOWNLOAD_BASE = 'https://github.com/fallguyconsulting/impeccable/releases/download';
 export const ENGINE_TARGETS = ['darwin-arm64', 'darwin-x64', 'linux-x64', 'linux-arm64', 'windows-x64'];
+// The targets this fork's release-engine workflow builds. It ships no Windows
+// binary: the upstream Windows build is signed with an account the fork cannot use.
+export const RELEASED_TARGETS = ENGINE_TARGETS.filter((t) => !t.startsWith('windows-'));
 
 export function readEngineVersion(root = ROOT) {
   return fs.readFileSync(path.join(root, 'ENGINE_VERSION'), 'utf-8').trim();
