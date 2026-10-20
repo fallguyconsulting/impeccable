@@ -537,13 +537,14 @@ pub fn js_parse_int(s: &str) -> Option<i64> {
     Some(if neg { -v } else { v })
 }
 
-fn fetch_latest_skill_version(env: &Env) -> Option<String> {
-    let host = env
-        .get("IMPECCABLE_UPDATE_HOST")
-        .filter(|v| !v.is_empty())
-        .cloned()
-        .unwrap_or_else(|| "https://impeccable.style".to_string());
-    let host = host.strip_suffix('/').unwrap_or(&host).to_string();
+/// The update host, `IMPECCABLE_UPDATE_HOST`. This fork names no default: with
+/// no host set, the update check never runs and never reports an upstream release.
+fn update_host(env: &Env) -> Option<String> {
+    let host = env.get("IMPECCABLE_UPDATE_HOST").filter(|v| !v.is_empty())?;
+    Some(host.strip_suffix('/').unwrap_or(host.as_str()).to_string())
+}
+
+fn fetch_latest_skill_version(host: &str) -> Option<String> {
     let agent = crate::http::agent_builder()
         .timeout(std::time::Duration::from_millis(FETCH_TIMEOUT_MS))
         .build();
@@ -583,6 +584,7 @@ pub fn compute_update_directive(cwd: &str, env: &Env, provider: &Provider) -> Op
     if update_check_disabled_by_config(cwd) {
         return None;
     }
+    let host = update_host(env)?;
     let local = read_local_skill_version(provider)?;
     if local.is_empty() {
         return None;
@@ -592,7 +594,7 @@ pub fn compute_update_directive(cwd: &str, env: &Env, provider: &Provider) -> Op
     let mut cache: Map<String, Value> = read_json(&cache_path).and_then(|v| v.as_object().cloned()).unwrap_or_default();
     let last_check = cache.get("lastCheck").and_then(|v| v.as_f64()).unwrap_or(0.0);
     if last_check == 0.0 || now - last_check > CHECK_INTERVAL_MS {
-        let latest = fetch_latest_skill_version(env);
+        let latest = fetch_latest_skill_version(&host);
         cache.insert("lastCheck".into(), Value::from(now as i64));
         if let Some(l) = latest {
             if !l.is_empty() {

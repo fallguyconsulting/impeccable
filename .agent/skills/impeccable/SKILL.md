@@ -4,7 +4,6 @@ description: "Use when the user wants to design, redesign, shape, critique, audi
 version: 4.7.0
 license: Apache 2.0
 allowed-tools:
-  - Bash(npx impeccable *)
   - Bash(.agent/skills/impeccable/scripts/impeccable *)
 ---
 

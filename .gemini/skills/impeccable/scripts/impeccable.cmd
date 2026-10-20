@@ -9,10 +9,10 @@ rem - No multi-line parenthesized blocks: cmd expands %var% at block parse
 rem   time, which made the old download path read back empty %url%/%cached%.
 rem   Linear goto flow keeps every expansion on its own line, and avoids
 rem   delayed expansion eating ! characters in user arguments.
-rem - The unversioned user binary and the PATH candidate are validated with
-rem   the engine-probe handshake (see :probe) so the retired 3.x npm CLI,
-rem   whose bin is also named impeccable, is never exec'd. IMPECCABLE_BIN,
-rem   the sibling binary, and the version-pinned cache stay trusted.
+rem - Only IMPECCABLE_BIN, the sibling binary, and the version-pinned cache
+rem   run. An unversioned %USERPROFILE%\.impeccable\bin\impeccable.exe or an
+rem   impeccable on PATH may be an upstream build and is never run: this
+rem   fork runs only the engine it released.
 rem - Downloads are verified against the .sha256 sidecar via certutil and
 rem   fail closed: a missing sidecar or hash tool refuses the download. On
 rem   ARM64 the arm64 asset is tried first and the x64 asset is the
@@ -34,15 +34,6 @@ set "run=%bin%"
 goto run
 :no_sibling
 
-set "home_bin=%USERPROFILE%\.impeccable\bin\impeccable.exe"
-if not exist "%home_bin%" goto no_home_bin
-if defined IMPECCABLE_LAUNCHER_PROBE goto no_home_bin
-call :probe "%home_bin%"
-if not "%probe_ok%"=="1" goto no_home_bin
-set "run=%home_bin%"
-goto run
-:no_home_bin
-
 set "version="
 if exist "%~dp0VERSION" set /p version=<"%~dp0VERSION"
 if not defined IMPECCABLE_HOME set "IMPECCABLE_HOME=%USERPROFILE%\.impeccable"
@@ -53,14 +44,6 @@ set "run=%cached%"
 goto run
 :no_cache
 
-if defined IMPECCABLE_LAUNCHER_PROBE goto download
-where impeccable >nul 2>nul
-if errorlevel 1 goto download
-call :probe impeccable
-if not "%probe_ok%"=="1" goto download
-impeccable %*
-exit /b %errorlevel%
-
 :download
 rem Last resort: fetch this version's binary from the release channel into
 rem the version-pinned user cache, verify it, then run it. Never inside
@@ -69,7 +52,7 @@ if defined IMPECCABLE_LAUNCHER_PROBE exit /b 127
 if not defined version goto fail
 where curl.exe >nul 2>nul
 if errorlevel 1 goto curl_missing
-if not defined IMPECCABLE_DOWNLOAD_BASE set "IMPECCABLE_DOWNLOAD_BASE=https://github.com/pbakaus/impeccable/releases/download"
+if not defined IMPECCABLE_DOWNLOAD_BASE set "IMPECCABLE_DOWNLOAD_BASE=https://github.com/fallguyconsulting/impeccable/releases/download"
 if exist "%IMPECCABLE_HOME%\bin\%version%\" goto cache_ready
 mkdir "%IMPECCABLE_HOME%\bin\%version%" >nul 2>nul
 if errorlevel 1 goto cache_directory_failed
@@ -191,23 +174,6 @@ exit /b 127
 "%run%" %*
 exit /b %errorlevel%
 
-:probe
-rem Sets probe_ok=1 when %1 answers the engine handshake: prints
-rem "impeccable-engine <version>" and exits 0. The 3.x npm CLI answers any
-rem unknown verb with "Unknown command", exit 1, so it never passes.
-set "probe_ok="
-set "probe_tmp=%TEMP%\impeccable-probe-%RANDOM%%RANDOM%.txt"
-set "IMPECCABLE_LAUNCHER_PROBE=1"
-"%~1" engine-probe >"%probe_tmp%" 2>nul
-set "probe_err=%ERRORLEVEL%"
-set "IMPECCABLE_LAUNCHER_PROBE="
-if not "%probe_err%"=="0" goto probe_done
-findstr /b /c:"impeccable-engine" "%probe_tmp%" >nul 2>nul
-if not errorlevel 1 set "probe_ok=1"
-:probe_done
-del "%probe_tmp%" >nul 2>nul
-exit /b 0
-
 :cache_directory_failed
 echo impeccable: engine %version% is not installed; cannot create cache directory: "%IMPECCABLE_HOME%\bin\%version%" 1>&2
 goto setup_failed
@@ -235,5 +201,5 @@ exit /b 127
 
 :fail
 echo impeccable: no engine binary found (looked in %bin%, %cached%, PATH). 1>&2
-echo Download impeccable-windows-%arch%.exe from https://github.com/pbakaus/impeccable/releases (tag engine-v%version%) and save it as %cached%, or set IMPECCABLE_BIN to a preinstalled engine binary. Docs: https://impeccable.style 1>&2
+echo Download impeccable-windows-%arch%.exe from https://github.com/fallguyconsulting/impeccable/releases (tag engine-v%version%) and save it as %cached%, or set IMPECCABLE_BIN to a preinstalled engine binary. Docs: https://impeccable.style 1>&2
 exit /b 127

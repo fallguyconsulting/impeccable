@@ -5,7 +5,6 @@ version: 4.7.0
 user-invocable: true
 license: Apache 2.0
 allowed-tools:
-  - Bash(npx impeccable *)
   - Bash(.vibe/skills/impeccable/scripts/impeccable *)
 ---
 

@@ -3,8 +3,8 @@
 //! so this pins the shapes a dry parse depends on: asset/URL construction in
 //! both launchers agrees with `engine_binary::asset_url`, the .cmd contains
 //! no multi-line parenthesized blocks (the parse-time `%var%` expansion bug
-//! that made its download path dead code), both launchers carry the
-//! engine-probe handshake, and the .cmd verifies downloads via certutil.
+//! that made its download path dead code), neither launcher runs an
+//! unversioned home or PATH binary, and the .cmd verifies downloads via certutil.
 
 use impeccable_skills::engine_binary::{asset_url, DEFAULT_DOWNLOAD_BASE};
 
@@ -29,10 +29,9 @@ fn sh_launcher_asset_naming_matches_engine() {
     let win_x64 = asset_url(DEFAULT_DOWNLOAD_BASE, "V", "windows", "x64");
     assert!(win_x64.ends_with("/engine-vV/impeccable-windows-x64.exe"));
     assert!(sh.contains(r#"url="$base/engine-v$version/impeccable-windows-x64.exe""#));
-    // The PATH and unversioned home candidates are probed; trusted paths are not.
-    assert!(sh.contains("engine-probe"));
-    assert!(sh.contains(r#"probe_ok "$home_bin""#));
-    assert!(sh.contains("probe_ok impeccable"));
+    // Only the fork-released engine runs: no unversioned home or PATH candidate.
+    assert!(!sh.contains("home_bin"));
+    assert!(!sh.contains("command -v impeccable"));
     // The final error must not recommend the npm package (it still serves 3.x).
     assert!(!sh.contains("npm i -g"));
     assert!(!sh.contains("npm install"));
@@ -51,9 +50,9 @@ fn cmd_launcher_asset_naming_matches_engine() {
     // sha256 verification via certutil against the sidecar.
     assert!(cmd.contains("certutil -hashfile"));
     assert!(cmd.contains(".sha256"));
-    // engine-probe handshake for PATH / unversioned home candidates.
-    assert!(cmd.contains("engine-probe"));
-    assert!(cmd.contains(r#"findstr /b /c:"impeccable-engine""#));
+    // Only the fork-released engine runs: no unversioned home or PATH candidate.
+    assert!(!cmd.contains("home_bin"));
+    assert!(!cmd.contains("where impeccable"));
     assert!(!cmd.contains("npm i -g"));
 }
 
@@ -74,8 +73,8 @@ fn cmd_launcher_forwards_engine_exit_code() {
     let forward = "exit /b %errorlevel%";
     assert_eq!(
         cmd.matches(forward).count(),
-        2,
-        "PATH candidate and :run must both forward the engine exit code"
+        1,
+        ":run must forward the engine exit code"
     );
 }
 
@@ -121,7 +120,7 @@ fn launchers_reference_the_same_release_channel() {
     let sh = launcher_file("impeccable");
     let cmd = launcher_file("impeccable.cmd");
     for text in [&sh, &cmd] {
-        assert!(text.contains("https://github.com/pbakaus/impeccable/releases"));
+        assert!(text.contains("https://github.com/fallguyconsulting/impeccable/releases"));
     }
     // Spot-check the engine's own URL builder against the launcher template.
     assert_eq!(
