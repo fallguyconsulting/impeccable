@@ -263,5 +263,5 @@ binary, so `bun run release:ext` is exempt from that gate. It does need
 `bun run build:extension` (and therefore a Rust toolchain and `wasm-pack`)
 before the zip is attached.
 
-CI runs the workspace build and tests (`rust`, `rust-windows`) and replays the
+CI runs the workspace build and tests (`rust`) and replays the
 oracle against a release build from the checkout under test.
